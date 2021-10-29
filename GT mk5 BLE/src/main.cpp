@@ -55,7 +55,7 @@
 #define NUM_CLUTCH_AVGS 3
 
 
-// ALL SCREEN STUFF IS SWITCHED TO SERIAL
+
 
 // Initialize the OLED display using Wire library
 SSD1306Wire  display(0x3c, SDA, SCL, GEOMETRY_128_32);
@@ -82,6 +82,7 @@ struct car
 
 struct car cars[MAX_CARS] = {0};
 
+int conectionState = 1;
 int screenState = SCREEN_OFF;
 int menuPos = CLUTCH_SET;
 int selectedCar = 0;
@@ -336,6 +337,13 @@ void pushBuffer()
     display.drawString(64,16,displayBuffer[0]);
     //Serial.println(displayBuffer[0]);
   }
+  else if(conectionState != 1)
+  {
+    display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
+    display.setFont(ArialMT_Plain_16);
+    display.drawString(64,16,displayBuffer[0]);
+    //Serial.println(displayBuffer[0]);
+  }
   else
   {
     display.setTextAlignment(TEXT_ALIGN_CENTER);
@@ -567,9 +575,9 @@ void newClutch(void) //move to new clutch screen
 
 
 
-void setName()
+void setName() // creates a new car and sets the name after a second confirmation call
 {
-  if(nameConfirm)
+  if(nameConfirm) 
   {
     struct car newCar;
     strcpy(newCar.name, editName);
@@ -818,9 +826,10 @@ void setup()
   Serial.begin(115200);
 
   // configure encoders
-  for (uint8_t i=0; i<MAXENC; i++) {
-    encoder[i].clearCount();
+  for (uint8_t i=0; i<MAXENC; i++) 
+  {    
     encoder[i].attachSingleEdge(dwnPin[i], uppPin[i]);
+    encoder[i].clearCount();
     pinMode(prsPin[i], INPUT);
   }
 
@@ -833,11 +842,18 @@ void loop()
   if(bleGamepad.isConnected()) 
   {
 
+    if(!conectionState)
+    {
+      conectionState = 1;
+      display.clear();
+      display.displayOff();
+    }
+
     readButtonInputs();
 
     bleGamepad.setX(getClutch());
 
-    if(millis() - lastTimeMenu > 400)
+    if(millis() - lastTimeMenu > 400) // stop multiple actions from a single button press
     {
       if (currentButtonStates[ENTER_BUTTON_POS] && currentButtonStates[CENTRE_BUTTON_POS]) // detect screen on command
       {
@@ -932,8 +948,17 @@ void loop()
   }
   else 
   {
-    digitalWrite(conectionLED, LOW);
+    //digitalWrite(conectionLED, LOW); 
+
+    if(conectionState)
+    {
+      conectionState = 0;
+      display.displayOn();
+      strcpy(displayBuffer[0], "DISCONECTED");
+      pushBuffer();
+    }
+    
   }
-  delay(10);
+  delay(15);
 }
 
